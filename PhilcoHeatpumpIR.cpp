@@ -16,7 +16,7 @@ void PhilcoHeatpumpIR::send(IRSender& IR, uint8_t powerModeCmd, uint8_t operatin
   (void)swingHCmd;
 
   // Sensible defaults for the heat pump mode
-
+  uint8_t powerMode = PHILCO_AIRCON1_POWER_ON;
   uint8_t operatingMode = PHILCO_AIRCON1_MODE_HEAT;
   uint8_t fanSpeed = PHILCO_AIRCON1_FAN_AUTO;
   uint8_t temperature = 21;
@@ -25,6 +25,7 @@ void PhilcoHeatpumpIR::send(IRSender& IR, uint8_t powerModeCmd, uint8_t operatin
 
   if (powerModeCmd == POWER_OFF)
   {
+    powerMode = PHILCO_AIRCON1_POWER_OFF;
     temperature = PHILCO_AIRCON1_OFF_TEMP;
     operatingMode = PHILCO_AIRCON1_MODE_COOL;
   }
@@ -51,7 +52,7 @@ void PhilcoHeatpumpIR::send(IRSender& IR, uint8_t powerModeCmd, uint8_t operatin
         }
         break;
     }
-    if ( temperatureCmd > 16 && temperatureCmd < 28)
+    if ( temperatureCmd > 15 && temperatureCmd < 31)
     {
       temperature = temperatureCmd;
     }
@@ -84,22 +85,25 @@ void PhilcoHeatpumpIR::sendPhilco(IRSender& IR, uint8_t powerMode, uint8_t opera
 
   uint8_t PhilcoTemplate[] = { 0x83, 0x06, 0x00, 0x00, 0x00, 0x00, 0x00,    // Header uint8_t 0-1
                              0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                             0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };  //
+                             0x00, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00 };  //
 
   uint8_t  i;
 
-  // Set the Fan speed, On/Off.
+  // Set Power state
+  PhilcoTemplate[18] ^= powerMode;
+  PhilcoTemplate[19] ^= powerMode;
+  // Set the Fan speed, Temperature and Operating Mode
   PhilcoTemplate[2] = fanSpeed;
   PhilcoTemplate[3] = (temperature - 16) << 4;
-  PhilcoTemplate[3] = PhilcoTemplate[3] + operatingMode
+  PhilcoTemplate[3] = PhilcoTemplate[3] + operatingMode;
 
   // Calculate checksums
   for (int i = 2; i < 13; i++) {
     PhilcoTemplate[13] ^= PhilcoTemplate[i];
-  }
+  };
   for (int i = 14; i < 20; i++) {
     PhilcoTemplate[20] ^= PhilcoTemplate[i];
-  }
+  };
 
   // 38 kHz PWM frequency
   IR.setFrequency(38);
